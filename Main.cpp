@@ -69,7 +69,7 @@ void initOpenGL() {
     // This initializes OpenGL with some common defaults.  More info here:
     // http://www.sfml-dev.org/tutorials/1.6/window-opengl.php
     glClearDepth(1.0f);
-    glClearColor(0.15f, 0.15f, 0.15f, 0.15f);
+    glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 }
 
