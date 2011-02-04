@@ -1,7 +1,7 @@
 #include "Framework.h"
 #include "Shader.h"
 
-#define MODEL_PATH "models/dragon.blend"
+#define MODEL_PATH "models/dragon.dae"
 
 // Note: See the SMFL documentation for info on setting up fullscreen mode
 // and using rendering settings
@@ -156,7 +156,7 @@ void setMatrices() {
     gluPerspective(fieldOfView, aspectRatio, nearClip, farClip);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(0.0f, 5.0f, -12.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    gluLookAt(0.0f, 2.0f, -12.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
     // Add a little rotation, using the elapsed time for smooth animation
     static float elapsed = 0.0f;
@@ -236,7 +236,7 @@ void setMeshData() {
     glVertexAttribPointer(normal, 3, GL_FLOAT, 0, sizeof(aiVector3D), mesh->mNormals);
 }
 
-
+    
 
 void renderFrame() {
 
