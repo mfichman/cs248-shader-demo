@@ -1,9 +1,7 @@
 #include "Framework.h"
 #include "Shader.h"
 
-#define MODEL_PATH "models/teapot.blend"
-#define ZNEAR 0.1f
-#define ZFAR 500.0f
+#define MODEL_PATH "models/dragon.blend"
 
 // Note: See the SMFL documentation for info on setting up fullscreen mode
 // and using rendering settings
@@ -20,10 +18,15 @@ sf::Clock clck;
 // exits.
 Assimp::Importer importer;
 const aiScene* scene;
+const aiMesh* mesh;
 std::vector<unsigned> indexBuffer;
 
 // Vertex shader
 std::auto_ptr<Shader> shader;
+
+// Texture
+std::auto_ptr<sf::Image> diffuseMap;
+std::auto_ptr<sf::Image> specularMap;
 
 void initOpenGL();
 void loadAssets();
@@ -68,20 +71,6 @@ void initOpenGL() {
     glClearDepth(1.0f);
     glClearColor(0.15f, 0.15f, 0.15f, 0.15f);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glDepthMask(GL_TRUE);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-
-    glViewport(0, 0, window.GetWidth(), window.GetHeight());
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(45.0f, (float)window.GetWidth()/window.GetHeight(), ZNEAR, ZFAR);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glTranslatef(0, 0, -3);
 }
 
 
@@ -102,10 +91,12 @@ void loadAssets() {
         std::cerr << importer.GetErrorString() << std::endl;
         exit(-1);
     }
+    
+    // Just render the first mesh in the imported scene file
+    mesh = scene->mMeshes[0];
 	
     // Set up the index buffer.  Each face should have 3 vertices since we
     // specified aiProcess_Triangulate
-    aiMesh* mesh = scene->mMeshes[0];
     indexBuffer.reserve(mesh->mNumFaces * 3);
     for (unsigned i = 0; i < mesh->mNumFaces; i++) {
         for (unsigned j = 0; j < mesh->mFaces[i].mNumIndices; j++) {
@@ -113,7 +104,7 @@ void loadAssets() {
         }
     }
 	
-    // Load the vertex shade
+    // Load the vertex shader
     shader.reset(new Shader("shaders/phong"));
 	if (!shader->loaded()) {
 		std::cerr << "Shader failed to load" << std::endl;
@@ -121,11 +112,11 @@ void loadAssets() {
 		exit(-1);
 	}
 
-    std::cout << "Vertices: " << mesh->mNumVertices << std::endl;
-    std::cout << "Faces: " << mesh->mNumFaces << std::endl;
-    std::cout << "Normals: " << mesh->HasNormals() << std::endl;
-    std::cout << "Tex coords: " << mesh->HasTextureCoords(0) << std::endl;
-    std::cout << "Indices: " << indexBuffer.size() << std::endl;
+    // Load the textures
+    diffuseMap.reset(new sf::Image());
+    diffuseMap->LoadFromFile("models/dragon-diffuse.jpg");
+    specularMap.reset(new sf::Image());
+    specularMap->LoadFromFile("models/dragon-specular.jpg");
 }
 
 
@@ -146,10 +137,6 @@ void handleInput() {
             // If the window is resized, then we need to change the perspective
             // transformation and viewport
             glViewport(0, 0, evt.Size.Width, evt.Size.Height);
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            gluPerspective(45.0f, (float)evt.Size.Width/evt.Size.Height, ZNEAR, ZFAR);
-            glMatrixMode(GL_MODELVIEW);
             break;
         }
     }
@@ -157,60 +144,113 @@ void handleInput() {
 
 
 
+void setMatrices() {
+    // Set up the projection and model-view matrices
+    GLfloat aspectRatio = (GLfloat)window.GetWidth()/window.GetHeight();
+    GLfloat nearClip = 0.1f;
+    GLfloat farClip = 500.0f;
+    GLfloat fieldOfView = 45.0f; // Degrees
 
-
-void renderFrame() {
-    // Always clear the frame buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(fieldOfView, aspectRatio, nearClip, farClip);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0f, 5.0f, -12.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
     // Add a little rotation, using the elapsed time for smooth animation
-    float elapsed = clck.GetElapsedTime();
+    static float elapsed = 0.0f;
+    elapsed += clck.GetElapsedTime();
     clck.Reset();
     glRotatef(20*elapsed, 0, 1, 0);
+}
 
-    // Just render the first mesh in the imported scene file
-    aiMesh* mesh = scene->mMeshes[0];
-	
-	// Set the shader
-	glUseProgram(shader->program());
 
-    // Set the material
-    // Get the material for the mesh and give it to OpenGL
+
+void setMaterial() {
     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
     aiColor3D color;
 
+    // Get a handle to the diffuse, specular, and ambient variables
+    // inside the shader.  Then set them with the diffuse, specular, and
+    // ambient color.
+    GLint diffuse = glGetUniformLocation(shader->programID(), "Kd");
     material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
-    GLfloat diffuse[] = { color.r, color.g, color.b, 1 };
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse);
+    glUniform3f(diffuse, color.r, color.g, color.b);
 
-    material->Get(AI_MATKEY_COLOR_SPECULAR, color);
-    GLfloat specular[] = { color.r, color.g, color.b, 1 };
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
+    // Specular material
+    GLint specular = glGetUniformLocation(shader->programID(), "Ks");
+    material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+    glUniform3f(specular, color.r, color.g, color.b);
+  
+    // Ambient material
+    GLint ambient = glGetUniformLocation(shader->programID(), "Ka");
+    material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+    glUniform3f(ambient, color.r, color.g, color.b);
 
-    material->Get(AI_MATKEY_COLOR_AMBIENT, color);
-    GLfloat ambient[] = { color.r, color.g, color.b, 1 };
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient);
-
-    float shininess;
-    if (AI_SUCCESS == material->Get(AI_MATKEY_SHININESS, shininess)) {
-        glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    // Specular power
+    GLint shininess = glGetUniformLocation(shader->programID(), "alpha");
+    float value;
+    if (AI_SUCCESS == material->Get(AI_MATKEY_SHININESS, value)) {
+        glUniform1f(shininess, value);
     } else {
-        glMaterialf(GL_FRONT, GL_SHININESS, 511);
+        glUniform1f(shininess, 1);
     }
+}
 
-    // Give OpenGL the arrays of vertices, normals, and texture coordinates
-    glVertexPointer(3, GL_FLOAT, sizeof(aiVector3D), mesh->mVertices);
-    if (mesh->HasNormals()) {
-        glNormalPointer(GL_FLOAT, sizeof(aiVector3D), mesh->mNormals);
-        glEnableClientState(GL_NORMAL_ARRAY);
-    }
-    if (mesh->HasTextureCoords(0)) {
-        glTexCoordPointer(2, GL_FLOAT, 0, mesh->mTextureCoords[0]);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    }
 
-    // Draw the model
-    glDrawElements(GL_TRIANGLES,  3* mesh->mNumFaces, GL_UNSIGNED_INT, &indexBuffer[0]);
-    glDisableClientState(GL_NORMAL_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+void setTextures() {
+    // Get a "handle" to the texture variables inside our shader.  Then 
+    // pass two textures to the shader: one for diffuse, and the other for
+    // transparency.
+    GLint diffuse = glGetUniformLocation(shader->programID(), "diffuseMap");
+    glUniform1i(diffuse, 0); // The diffuse map will be GL_TEXTURE0
+    glActiveTexture(GL_TEXTURE0);
+    diffuseMap->Bind();
+    
+    // Transparency
+    GLint specular = glGetUniformLocation(shader->programID(), "specularMap");
+    glUniform1i(specular, 1); // The transparency map will be GL_TEXTURE1
+    glActiveTexture(GL_TEXTURE1);
+    specularMap->Bind();
+}
+
+
+
+
+void setMeshData() {
+    // Get a handle to the variables for the vertex data inside the shader.
+    GLint position = glGetAttribLocation(shader->programID(), "positionIn");
+    glEnableVertexAttribArray(position);
+    glVertexAttribPointer(position, 3, GL_FLOAT, 0, sizeof(aiVector3D), mesh->mVertices);
+
+    // Texture coords.  Note the [0] at the end, very important
+    GLint texcoord = glGetAttribLocation(shader->programID(), "texcoordIn");
+    glEnableVertexAttribArray(texcoord);
+    glVertexAttribPointer(texcoord, 2, GL_FLOAT, 0, sizeof(aiVector3D), mesh->mTextureCoords[0]);
+
+    // Normals
+    GLint normal = glGetAttribLocation(shader->programID(), "normalIn");
+    glEnableVertexAttribArray(normal);
+    glVertexAttribPointer(normal, 3, GL_FLOAT, 0, sizeof(aiVector3D), mesh->mNormals);
+}
+
+
+
+void renderFrame() {
+
+
+    // Always clear the frame buffer
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	glUseProgram(shader->programID());
+
+    setMatrices();
+    setMaterial();
+    setTextures();
+    setMeshData();
+
+    // Draw the mesh
+    glDrawElements(GL_TRIANGLES,  3*mesh->mNumFaces, GL_UNSIGNED_INT, &indexBuffer[0]);
 }
