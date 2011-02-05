@@ -25,7 +25,7 @@ Shader::Shader(const std::string& path) :
 	// Load the fragment shader and compile
 	std::vector<char> fragmentSource = readSource(path + ".frag.glsl");
 	source[0] = &fragmentSource.front();
-    length = fragmentSource.size();
+    length = fragmentSource.size()-1;
 	fragmentShaderID_ = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShaderID_, 1, source, &length);
     glCompileShader(fragmentShaderID_);
@@ -33,7 +33,7 @@ Shader::Shader(const std::string& path) :
 	// Load the vertex shader and compile
 	std::vector<char> vertexSource = readSource(path + ".vert.glsl");
 	source[0] = &vertexSource.front();
-    length = vertexSource.size();
+    length = vertexSource.size()-1;
 	vertexShaderID_ = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShaderID_, 1, source, &length);
     glCompileShader(vertexShaderID_);
