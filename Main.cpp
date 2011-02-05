@@ -51,7 +51,6 @@ int main(int argc, char** argv) {
 
 
 
-
 void initOpenGL() {
     // Initialize GLEW on Windows, to make sure that OpenGL 2.0 is loaded
 #ifdef FRAMEWORK_USE_GLEW
@@ -71,6 +70,7 @@ void initOpenGL() {
     glClearDepth(1.0f);
     glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glViewport(0, 0, window.GetWidth(), window.GetHeight());
 }
 
 
@@ -82,9 +82,9 @@ void loadAssets() {
     // More info is here:
     // http://assimp.sourceforge.net/lib_html/usage.html
     scene = importer.ReadFile(MODEL_PATH,  
-        //aiProcess_CalcTangentSpace |
+        aiProcess_CalcTangentSpace |
         aiProcess_Triangulate |
-        //aiProcess_JoinIdenticalVertices |
+        aiProcess_JoinIdenticalVertices |
         aiProcessPreset_TargetRealtime_Quality);
 
     if (!scene || scene->mNumMeshes <= 0) {
@@ -123,6 +123,10 @@ void loadAssets() {
 
 
 void handleInput() {
+    //////////////////////////////////////////////////////////////////////////
+    // TODO: ADD YOUR INPUT HANDLING HERE. 
+    //////////////////////////////////////////////////////////////////////////
+
     // Event loop, for processing user input, etc.  For more info, see:
     // http://www.sfml-dev.org/tutorials/1.6/window-events.php
     sf::Event evt;
@@ -239,7 +243,6 @@ void setMeshData() {
     
 
 void renderFrame() {
-
 
     // Always clear the frame buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
