@@ -1,4 +1,4 @@
-CS 248 SFML Template
+CS 248 Shader Demo
 ====================
 
 This is a template for writing rendering programs using the [Simple and Fast Multimedia Library](http://www.sfml-dev.org) and the [Open Asset Import Library](http://assimp.sourceforge.net).
