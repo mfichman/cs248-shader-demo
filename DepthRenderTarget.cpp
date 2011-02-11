@@ -4,8 +4,6 @@ DepthRenderTarget::DepthRenderTarget(unsigned int width, unsigned int height) {
     width_ = width;
     height_ = height;
 
-    glPushAttrib(GL_ALL_ATTRIB_BITS );
-
     // Initialize the texture, including filtering options
     glGenTextures(1, &textureID_);
     glBindTexture(GL_TEXTURE_2D, textureID_);
@@ -25,28 +23,30 @@ DepthRenderTarget::DepthRenderTarget(unsigned int width, unsigned int height) {
         0);
 
     // Generate a framebuffer
-    glGenFramebuffers(1, &frameBufferID_);
-    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferID_);
+    glGenFramebuffersEXT(1, &frameBufferID_);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frameBufferID_);
 
     // Attach the texture to the frame buffer
-    glFramebufferTexture2D(
-        GL_FRAMEBUFFER,
-        GL_DEPTH_ATTACHMENT,
+    glFramebufferTexture2DEXT(
+        GL_FRAMEBUFFER_EXT,
+        GL_DEPTH_ATTACHMENT_EXT,
         GL_TEXTURE_2D,
         textureID_,
         0);
 
     // Check the status of the FBO
     glDrawBuffer(GL_NONE);
-    if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
-        std::cerr << "Invalid framebuffer configuration" << std::endl;
-        exit(-1);
+    if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
+        throw std::runtime_error("Invalid framebuffer configuration");
     }
+    glDrawBuffer(GL_BACK);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 DepthRenderTarget::~DepthRenderTarget() {
-    glDeleteFramebuffers(1, &frameBufferID_);
-    glDeleteRenderbuffers(1, &depthBufferID_);
+    glDeleteFramebuffersEXT(1, &frameBufferID_);
+    glDeleteRenderbuffersEXT(1, &depthBufferID_);
     glDeleteTextures(1, &textureID_);
 }
 
@@ -55,13 +55,14 @@ GLuint DepthRenderTarget::textureID() const {
 }
 
 void DepthRenderTarget::bind() {
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferID_);
-    glViewport(0, 0, width_, height_);
+    glPushAttrib(GL_VIEWPORT_BIT);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frameBufferID_);
     glDrawBuffer(GL_NONE);
+    glViewport(0, 0, width_, height_);
 }
 
 void DepthRenderTarget::unbind() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    glDrawBuffer(GL_BACK);
     glPopAttrib();
 }
