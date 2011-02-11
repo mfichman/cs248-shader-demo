@@ -8,6 +8,7 @@
 *.suo
 *.ncb
 *~
+*.ncb
 main
 vs2010/Debug
 vs2010/Release
